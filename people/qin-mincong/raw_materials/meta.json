@@ -1,0 +1,49 @@
+{
+  "person_id": "qin-mincong",
+  "full_name": "秦敏聪",
+  "common_name": "秦董",
+  "role": "大兴汽车 董事长",
+  "modeling_date": "2026-05-06",
+  "psp_version": "2.1",
+  "raw_material_location": "Work/交付中项目/大兴汽车-MVP一期/研究分身/",
+  "sources": [
+    {
+      "id": "rag-chunks",
+      "type": "mixed",
+      "format": "evidence-chunks.csv",
+      "count": 531,
+      "path": "04-秦董AI孪生确定交付包-v1.0/02-rag-evidence/",
+      "performance_coefficient": 0.45,
+      "note": "混合素材，正式场合语料为主（演讲/会议/培训）"
+    },
+    {
+      "id": "clean-text",
+      "type": "source_documents",
+      "format": "txt/md",
+      "count": 28,
+      "path": "04-秦董AI孪生确定交付包-v1.0/03-clean-text-source/",
+      "performance_coefficient": 0.4,
+      "note": "清洗后的原始文档，结构化内容"
+    }
+  ],
+  "evidence_type_distribution": {
+    "quote": "高频（语录/原话）",
+    "belief": "高频（稳定观点）",
+    "experience_pattern": "高频（经验模式）",
+    "decision_case": "中频（决策案例）",
+    "behavior_observation": "中频（行为观察）",
+    "company_value": "高频（大兴价值观）",
+    "life_value": "中频（人生观）",
+    "language_fingerprint": "高频（语言样本）"
+  },
+  "quality_assessment": {
+    "overall_confidence": "中",
+    "key_gap": "缺乏非正式语料（私下微信/走廊对话）",
+    "informal_ratio": "<10%",
+    "time_span": "待确认",
+    "conflict_stories_extracted": 9,
+    "experience_patterns_extracted": 9,
+    "recommendation": "补充私下/非正式语料以提升 1.3/3.4/4.1 置信度"
+  },
+  "last_updated": "2026-05-06"
+}
