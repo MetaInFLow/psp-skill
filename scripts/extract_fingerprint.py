@@ -9,6 +9,8 @@ PSP v2.1 · 12 维度语言指纹提取
     python extract_fingerprint.py --input <file_or_dir> --output <output.json>
     python extract_fingerprint.py --input people/zhang_san/raw_materials/ \
         --output people/zhang_san/analysis/linguistic_fingerprint.json
+    python extract_fingerprint.py --input <authorized_raw_materials_dir> \
+        --output identity/psp/zhang_san/analysis/linguistic_fingerprint.json
 
 支持中文与英文混合语料。
 """

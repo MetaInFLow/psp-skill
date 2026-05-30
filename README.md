@@ -9,8 +9,8 @@
 ## 三阶段工作流
 
 ```
-[阶段一 · 建模]   原始素材  ─→  PSP.md
-[阶段二 · 扮演]   PSP.md    ─→  system_prompt.txt
+[阶段一 · 建模]   原始素材  ─→  PSP-YYYYMMDD-HHMMSS.md + PSP.md
+[阶段二 · 扮演]   PSP.md    ─→  system_prompt-YYYYMMDD-HHMMSS.txt
 [阶段三 · 测量]   AI 输出   ─→  validation_report.md
                               │
                               ↓
@@ -42,8 +42,10 @@
 - `blind_eval_prep.py` —— 盲评测试包准备（阶段三测量 A）
 - `init_person.sh` —— 新建人物目录
 
-### 人物目录（people/）
-- `example_person/` —— 空模板，每个目标人物建一个独立子目录
+### 人物产物（people/）
+- 默认写入 `people/<person_id>/`。
+- `people/` 已被 `.gitignore` 忽略，不提交具体人物产物。
+- openLifeOS / LifeOS 调用时可用 `--lifeos-root <repo>` 写入对应 LifeOS 的 `identity/psp/<person_id>/`。
 
 ## 快速开始
 
@@ -52,6 +54,8 @@
 ```bash
 cd /path/to/psp/
 bash scripts/init_person.sh zhang_san
+# 或写入 LifeOS canonical PSP 产物目录：
+bash scripts/init_person.sh zhang_san --lifeos-root /path/to/Target.LifeOS
 ```
 
 ### 2. 准备素材
@@ -72,12 +76,12 @@ python3 scripts/extract_fingerprint.py \
 
 ### 4. 填充 PSP.md（人工）
 
-按 `templates/PSP_template.md` 的结构填充 `people/zhang_san/PSP.md`。
+按 `templates/PSP_template.md` 的结构填充 `people/zhang_san/PSP-YYYYMMDD-HHMMSS.md`，并同步 `people/zhang_san/PSP.md` current 入口。
 严格遵守 `references/extraction_protocol.md` 的八条核心原则。
 
 ### 5. 生成 system prompt（人工）
 
-按 `templates/system_prompt_template.md` 的五段结构生成 `people/zhang_san/system_prompt.txt`。
+按 `templates/system_prompt_template.md` 的五段结构生成 `people/zhang_san/system_prompt-YYYYMMDD-HHMMSS.txt`。
 反钝化指令至少 8 条。
 
 ### 6. 验证（半自动）

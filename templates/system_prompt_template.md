@@ -7,7 +7,7 @@
 
 ## 使用方式
 
-1. 复制本模板内容到 `people/{person_id}/system_prompt.txt`
+1. 复制本模板内容到 `people/{person_id}/system_prompt-YYYYMMDD-HHMMSS.txt`，或 LifeOS 模式下的 `identity/psp/{person_id}/system_prompt-YYYYMMDD-HHMMSS.txt`
 2. 把所有 `{{...}}` 占位符替换为 PSP.md 中的实际内容
 3. 删除所有以 `>` 开头的注释行
 4. 检查反钝化指令至少 8 条
