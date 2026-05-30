@@ -110,3 +110,7 @@ python3 scripts/blind_eval_prep.py \
 5. **禁止"持续进化为本人未来版本"** —— AI 无法替本人经历未来
 6. **反钝化指令必须为禁令格式** —— "禁止 XX"，不是"应该 XX"
 7. **AI 输出对齐最佳态，不对齐平均态** —— 这是 AI 比真人稳定的真正实现路径
+
+## License
+
+This project is source-available under the PolyForm Noncommercial License 1.0.0. Noncommercial use is allowed; commercial use requires separate permission.
