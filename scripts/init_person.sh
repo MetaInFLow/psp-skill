@@ -5,6 +5,7 @@
 #   bash init_person.sh <person_id>
 #   bash init_person.sh <person_id> --output-root <dir>
 #   bash init_person.sh <person_id> --lifeos-root <lifeos_repo>
+#   bash init_person.sh <person_id> --person-name "Display Name"
 #
 # 例：
 #   bash init_person.sh zhang_san
@@ -22,6 +23,7 @@ fi
 
 PERSON_ID="$1"
 shift
+PERSON_NAME="$PERSON_ID"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PSP_ROOT="$(dirname "$SCRIPT_DIR")"
 OUTPUT_ROOT="$PSP_ROOT/people"
@@ -46,6 +48,14 @@ while [ "$#" -gt 0 ]; do
             CREATE_RAW_MATERIALS="0"
             shift 2
             ;;
+        --person-name)
+            if [ -z "$2" ]; then
+                echo "[错误] --person-name 需要名称参数"
+                exit 1
+            fi
+            PERSON_NAME="$2"
+            shift 2
+            ;;
         --no-raw-materials)
             CREATE_RAW_MATERIALS="0"
             shift
@@ -59,8 +69,11 @@ done
 
 PERSON_DIR="$OUTPUT_ROOT/$PERSON_ID"
 TS="$(date +%Y%m%d-%H%M%S)"
-PSP_VERSION="$PERSON_DIR/PSP-$TS.md"
-PSP_CURRENT="$PERSON_DIR/PSP.md"
+GENERATED_AT="$(date +"%Y-%m-%dT%H:%M:%S%z")"
+PSP_VERSION="$PERSON_DIR/versions/PSP_REPORT.$TS.xml"
+PSP_CURRENT="$PERSON_DIR/current/PSP_REPORT.xml"
+EVIDENCE_VERSION="$PERSON_DIR/versions/EVIDENCE_MATURITY.$TS.xml"
+EVIDENCE_CURRENT="$PERSON_DIR/current/EVIDENCE_MATURITY.xml"
 
 if [ -d "$PERSON_DIR" ]; then
     echo "[错误] 目录已存在：$PERSON_DIR"
@@ -76,16 +89,60 @@ if [ "$CREATE_RAW_MATERIALS" = "1" ]; then
     mkdir -p "$PERSON_DIR/raw_materials/emails"
     mkdir -p "$PERSON_DIR/raw_materials/interviews"
 fi
+mkdir -p "$PERSON_DIR/current"
+mkdir -p "$PERSON_DIR/versions"
+mkdir -p "$PERSON_DIR/derived"
 mkdir -p "$PERSON_DIR/analysis"
 mkdir -p "$PERSON_DIR/validation/test_samples/human_samples"
 mkdir -p "$PERSON_DIR/validation/test_samples/ai_outputs"
 mkdir -p "$PERSON_DIR/validation/test_samples/judgment_test"
 
-# 拷贝 PSP 模板作为带时间戳的版本产物，并同步 current 入口。
-cp "$PSP_ROOT/templates/PSP_template.md" "$PSP_VERSION"
-sed -i "s/{person_name}/$PERSON_ID/g; s/{person_id}/$PERSON_ID/g" "$PSP_VERSION" 2>/dev/null || \
-    sed -i '' "s/{person_name}/$PERSON_ID/g; s/{person_id}/$PERSON_ID/g" "$PSP_VERSION"
+escape_sed_replacement() {
+    printf '%s' "$1" | sed 's/[\/&|]/\\&/g'
+}
+
+render_template() {
+    local template="$1"
+    local output="$2"
+    local person_id_escaped
+    local person_name_escaped
+    local generated_at_escaped
+    local ts_escaped
+    person_id_escaped="$(escape_sed_replacement "$PERSON_ID")"
+    person_name_escaped="$(escape_sed_replacement "$PERSON_NAME")"
+    generated_at_escaped="$(escape_sed_replacement "$GENERATED_AT")"
+    ts_escaped="$(escape_sed_replacement "$TS")"
+    cp "$template" "$output"
+    sed -i.bak \
+        -e "s|{person_id}|$person_id_escaped|g" \
+        -e "s|{person_name}|$person_name_escaped|g" \
+        -e "s|{generated_at}|$generated_at_escaped|g" \
+        -e "s|{artifact_timestamp}|$ts_escaped|g" \
+        "$output"
+    rm -f "$output.bak"
+}
+
+# 拷贝 XML 模板作为带时间戳的版本产物，并同步 current 入口。
+render_template "$PSP_ROOT/templates/PSP_REPORT.template.xml" "$PSP_VERSION"
 cp "$PSP_VERSION" "$PSP_CURRENT"
+render_template "$PSP_ROOT/templates/EVIDENCE_MATURITY.template.xml" "$EVIDENCE_VERSION"
+cp "$EVIDENCE_VERSION" "$EVIDENCE_CURRENT"
+
+cat > "$PERSON_DIR/ARTIFACTS.xml" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<psp_artifacts schema="psp.artifacts.v1" person_id="$PERSON_ID" generated_at="$GENERATED_AT">
+  <canonical_report current="current/PSP_REPORT.xml" version="versions/PSP_REPORT.$TS.xml"/>
+  <evidence_maturity current="current/EVIDENCE_MATURITY.xml" version="versions/EVIDENCE_MATURITY.$TS.xml"/>
+  <derived_artifacts root="derived/" source_of_truth="false"/>
+  <soul_policy produced="false">SOUL.md is paused; PSP_REPORT.xml carries the person model and runtime constraints.</soul_policy>
+</psp_artifacts>
+EOF
+
+cat > "$PERSON_DIR/derived/README.md" << 'EOF'
+# Derived PSP Readables
+
+Optional Markdown or HTML renderings can live here, but `../current/PSP_REPORT.xml` remains the source of truth.
+EOF
 
 if [ "$CREATE_RAW_MATERIALS" = "1" ]; then
 cat > "$PERSON_DIR/raw_materials/meta.json" << EOF
@@ -126,15 +183,18 @@ EOF
 
 echo "[PSP] 完成。下一步："
 echo ""
-echo "  1. 已生成版本产物：$PSP_VERSION"
-echo "  2. 已同步 current 入口：$PSP_CURRENT"
+echo "  1. 已生成 PSP XML 版本产物：$PSP_VERSION"
+echo "  2. 已同步 PSP XML current 入口：$PSP_CURRENT"
+echo "  3. 已生成 evidence maturity XML：$EVIDENCE_CURRENT"
 if [ "$CREATE_RAW_MATERIALS" = "1" ]; then
-echo "  3. 把原始素材放入 $PERSON_DIR/raw_materials/ 对应子目录"
-echo "  4. 编辑 $PERSON_DIR/raw_materials/meta.json，标注每份素材的表演系数"
-echo "  5. 进入阶段一·建模流程（详见 SKILL.md）"
+echo "  4. 把原始素材放入 $PERSON_DIR/raw_materials/ 对应子目录"
+echo "  5. 编辑 $PERSON_DIR/raw_materials/meta.json，标注每份素材的表演系数"
+echo "  6. 运行 doctor：python3 scripts/psp_doctor.py $PERSON_DIR"
+echo "  7. 进入阶段一·建模流程（详见 SKILL.md）"
 else
-echo "  3. 原始素材不要写入 LifeOS repo；放在授权私有资料源，或临时使用 PSP repo 中已被 gitignore 的 people/ 工作区"
-echo "  4. 进入阶段一·建模流程（详见 SKILL.md）"
+echo "  4. 原始素材不要写入 LifeOS repo；放在授权私有资料源，或临时使用 PSP repo 中已被 gitignore 的 people/ 工作区"
+echo "  5. 运行 doctor：python3 scripts/psp_doctor.py $PERSON_DIR"
+echo "  6. 进入阶段一·建模流程（详见 SKILL.md）"
 fi
 echo ""
 echo "  抽取语言指纹（在素材就位后）："

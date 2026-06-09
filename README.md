@@ -9,8 +9,8 @@
 ## 三阶段工作流
 
 ```
-[阶段一 · 建模]   原始素材  ─→  PSP-YYYYMMDD-HHMMSS.md + PSP.md
-[阶段二 · 扮演]   PSP.md    ─→  system_prompt-YYYYMMDD-HHMMSS.txt
+[阶段一 · 建模]   原始素材  ─→  current/PSP_REPORT.xml + versions/PSP_REPORT.<timestamp>.xml
+[阶段二 · 扮演]   PSP XML   ─→  system_prompt-YYYYMMDD-HHMMSS.txt
 [阶段三 · 测量]   AI 输出   ─→  validation_report.md
                               │
                               ↓
@@ -23,7 +23,9 @@
 - `SKILL.md` —— 三阶段工作流总纲，先读这个
 
 ### 模板（templates/）
-- `PSP_template.md` —— 16 子项 PSP 主文档
+- `PSP_REPORT.template.xml` —— canonical PSP XML 主报告
+- `EVIDENCE_MATURITY.template.xml` —— evidence maturity XML
+- `PSP_template.md` —— legacy/derived Markdown 读物模板，不是源报告
 - `system_prompt_template.md` —— 五段 system prompt
 - `anti_blunting_template.md` —— 反钝化指令
 - `judgment_test_template.md` —— 判断保真度测试
@@ -37,6 +39,7 @@
 - `system_prompt_structure.md` —— 五段标准结构详解
 
 ### 脚本（scripts/）
+- `psp_doctor.py` —— PSP XML 结构 doctor
 - `extract_fingerprint.py` —— 12 维度语言指纹自动提取
 - `consistency_scan.py` —— 风格一致性自动扫描（阶段三测量 C）
 - `blind_eval_prep.py` —— 盲评测试包准备（阶段三测量 A）
@@ -46,6 +49,9 @@
 - 默认写入 `people/<person_id>/`。
 - `people/` 已被 `.gitignore` 忽略，不提交具体人物产物。
 - openLifeOS / LifeOS 调用时可用 `--lifeos-root <repo>` 写入对应 LifeOS 的 `identity/psp/<person_id>/`。
+- canonical source of truth 是 `current/PSP_REPORT.xml`；同名版本保留在 `versions/PSP_REPORT.<timestamp>.xml`。
+- `SOUL.md` 暂停生成。PSP XML 直接承载人物模型、行为边界、最佳态和 runtime 指令。
+- PSP XML 固定包含本体九维、核心领域模型、授权边界、强制降级规则、确认清单和验收标准，避免产物退化成行业知识库或金句摘抄。
 
 ## 快速开始
 
@@ -74,10 +80,16 @@ python3 scripts/extract_fingerprint.py \
     --output people/zhang_san/analysis/linguistic_fingerprint.json
 ```
 
-### 4. 填充 PSP.md（人工）
+### 4. 填充 PSP XML（人工）
 
-按 `templates/PSP_template.md` 的结构填充 `people/zhang_san/PSP-YYYYMMDD-HHMMSS.md`，并同步 `people/zhang_san/PSP.md` current 入口。
+按 `templates/PSP_REPORT.template.xml` 的结构填充 `people/zhang_san/versions/PSP_REPORT.YYYYMMDD-HHMMSS.xml`，并同步 `people/zhang_san/current/PSP_REPORT.xml` current 入口。
 严格遵守 `references/extraction_protocol.md` 的八条核心原则。
+
+结构检查：
+
+```bash
+python3 scripts/psp_doctor.py people/zhang_san
+```
 
 ### 5. 生成 system prompt（人工）
 

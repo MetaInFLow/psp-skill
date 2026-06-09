@@ -1,6 +1,6 @@
 # System Prompt 模板（PSP v2.1 五段标准结构）
 
-> 把 PSP.md 里的内容填入下面五段，产出可直接贴到 Claude 项目或 API system prompt 字段使用的文本。
+> 从 `current/PSP_REPORT.xml` 或 `versions/PSP_REPORT.<timestamp>.xml` 读取 PSP XML，把结构化内容填入下面五段，产出可直接贴到 Claude 项目或 API system prompt 字段使用的文本。
 > 每段都有"必含""可选""禁止"三类内容标注，按规定填充。
 
 ---
@@ -8,7 +8,7 @@
 ## 使用方式
 
 1. 复制本模板内容到 `people/{person_id}/system_prompt-YYYYMMDD-HHMMSS.txt`，或 LifeOS 模式下的 `identity/psp/{person_id}/system_prompt-YYYYMMDD-HHMMSS.txt`
-2. 把所有 `{{...}}` 占位符替换为 PSP.md 中的实际内容
+2. 把所有 `{{...}}` 占位符替换为 PSP XML 中的实际内容；不得从派生 Markdown 反推
 3. 删除所有以 `>` 开头的注释行
 4. 检查反钝化指令至少 8 条
 5. 保存
