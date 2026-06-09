@@ -35,6 +35,14 @@ Every PSP claim field should expose:
 - `runtime_use`: how this field should or should not be used by an agent.
 - `missing_evidence`: what would improve this field.
 
+Every PSP artifact must also declare its output language before any model content:
+
+- root `language`: `zh-CN` or `en-US`
+- `language_contract/output_language`
+- `metadata/output_language`
+
+These three values must match. All report prose, missing-information prompts, confirmation questions, derived readables, runtime prompts, validation reports, and final disclosures must use that language. Source quotes, file paths, XML tags, schema names, product names, and canonical protocol terms may remain unchanged.
+
 Fresh scaffolds therefore expose useful absence:
 
 ```xml
@@ -89,7 +97,8 @@ identity/psp/{person_id}/
 `PSP_REPORT.xml` root:
 
 ```xml
-<psp_report schema="psp.report.v1" person_id="" generated_at="" artifact_timestamp="">
+<psp_report schema="psp.report.v1" person_id="" generated_at="" artifact_timestamp="" language="zh-CN">
+  <language_contract/>
   <metadata/>
   <evidence_maturity/>
   <source_inventory/>
@@ -117,6 +126,7 @@ Required module meanings:
 
 | Module | Required content | Recommended presentation |
 |---|---|---|
+| `language_contract` | output_language, content_language_policy, mixed_language_policy, failure_policy | text fields |
 | `metadata` | person id, display name, protocol version, canonical paths, derived artifact policy, SOUL pause policy | text fields |
 | `evidence_maturity` | maturity level, structure readiness, content maturity, source count/types, incomplete areas | enum + counts + list |
 | `source_inventory` | approved source list, type, date range, privacy class, performance coefficient, coverage | table/list |
@@ -220,7 +230,8 @@ Required module meanings:
 `EVIDENCE_MATURITY.xml` root:
 
 ```xml
-<evidence_maturity_report schema="psp.evidence-maturity.v1" person_id="" generated_at="">
+<evidence_maturity_report schema="psp.evidence-maturity.v1" person_id="" generated_at="" language="zh-CN">
+  <language_contract/>
   <metadata/>
   <maturity level="scaffold|evidence-limited-v0|public-v0|research-grade|avatar-grade"/>
   <evidence_sources/>

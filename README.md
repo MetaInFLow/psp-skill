@@ -25,6 +25,8 @@
 ### 模板（templates/）
 - `PSP_REPORT.template.xml` —— canonical PSP XML 主报告
 - `EVIDENCE_MATURITY.template.xml` —— evidence maturity XML
+- `zh-CN/PSP_REPORT.template.xml` —— 中文 PSP XML 主报告模板
+- `zh-CN/EVIDENCE_MATURITY.template.xml` —— 中文 evidence maturity XML 模板
 - `PSP_template.md` —— legacy/derived Markdown 读物模板，不是源报告
 - `system_prompt_template.md` —— 五段 system prompt
 - `anti_blunting_template.md` —— 反钝化指令
@@ -61,8 +63,10 @@
 cd /path/to/psp/
 bash scripts/init_person.sh zhang_san
 # 或写入 LifeOS canonical PSP 产物目录：
-bash scripts/init_person.sh zhang_san --lifeos-root /path/to/Target.LifeOS
+bash scripts/init_person.sh zhang_san --lifeos-root /path/to/Target.LifeOS --language zh-CN
 ```
+
+`--language` / `--output-language` 必须在开始时确定，支持 `zh-CN` 和 `en-US`，默认 `zh-CN`。PSP XML 会在根节点、`language_contract` 和 `metadata` 中重复记录语言；`psp_doctor.py` 会检查三者一致。
 
 ### 2. 准备素材
 

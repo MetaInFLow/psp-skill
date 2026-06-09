@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<psp_report schema="psp.report.v1" person_id="{person_id}" generated_at="{generated_at}" artifact_timestamp="{artifact_timestamp}">
+<psp_report schema="psp.report.v1" person_id="{person_id}" generated_at="{generated_at}" artifact_timestamp="{artifact_timestamp}" language="{output_language}">
+  <language_contract status="configured" confidence="high">
+    <output_language>{output_language}</output_language>
+    <content_language_policy>All PSP report prose, missing-information prompts, confirmation questions, derived readables, runtime prompts, validation reports, and final disclosures must use output_language.</content_language_policy>
+    <mixed_language_policy>Preserve source quotes, file paths, XML tag names, schema names, product names, and canonical protocol terms as-is. Do not let template prose drift into another language.</mixed_language_policy>
+    <failure_policy>If generated content appears in another language, regenerate or translate before marking the PSP artifact complete.</failure_policy>
+  </language_contract>
+
   <metadata status="scaffold" confidence="insufficient">
     <person_id>{person_id}</person_id>
     <display_name>{person_name}</display_name>
+    <output_language>{output_language}</output_language>
     <protocol_version>2.1</protocol_version>
     <canonical_format>xml</canonical_format>
     <current_entrypoint>current/PSP_REPORT.xml</current_entrypoint>

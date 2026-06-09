@@ -1,8 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<evidence_maturity_report schema="psp.evidence-maturity.v1" person_id="{person_id}" generated_at="{generated_at}" artifact_timestamp="{artifact_timestamp}">
+<evidence_maturity_report schema="psp.evidence-maturity.v1" person_id="{person_id}" generated_at="{generated_at}" artifact_timestamp="{artifact_timestamp}" language="{output_language}">
+  <language_contract status="configured" confidence="high">
+    <output_language>{output_language}</output_language>
+    <content_language_policy>All evidence maturity prose, incomplete-area descriptions, failed-source notes, and final disclosures must use output_language.</content_language_policy>
+    <mixed_language_policy>Preserve source quotes, file paths, XML tag names, schema names, product names, and canonical protocol terms as-is.</mixed_language_policy>
+    <failure_policy>If generated content appears in another language, regenerate or translate before marking evidence maturity complete.</failure_policy>
+  </language_contract>
+
   <metadata status="scaffold" confidence="insufficient">
     <person_id>{person_id}</person_id>
     <display_name>{person_name}</display_name>
+    <output_language>{output_language}</output_language>
     <current_entrypoint>current/EVIDENCE_MATURITY.xml</current_entrypoint>
     <versioned_artifact>versions/EVIDENCE_MATURITY.{artifact_timestamp}.xml</versioned_artifact>
   </metadata>

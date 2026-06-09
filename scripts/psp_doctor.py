@@ -11,8 +11,10 @@ from pathlib import Path
 
 
 MATURITY_LEVELS = {"scaffold", "evidence-limited-v0", "public-v0", "research-grade", "avatar-grade"}
+SUPPORTED_LANGUAGES = {"zh-CN", "en-US"}
 
 REQUIRED_MODULES = (
+    "language_contract",
     "metadata",
     "evidence_maturity",
     "source_inventory",
@@ -36,6 +38,12 @@ REQUIRED_MODULES = (
 )
 
 NESTED_REQUIREMENTS = {
+    "language_contract": (
+        "output_language",
+        "content_language_policy",
+        "mixed_language_policy",
+        "failure_policy",
+    ),
     "kernel": (
         "ultimate_value_order",
         "boundaries",
@@ -161,6 +169,32 @@ def has_missing_marker(element: ET.Element) -> bool:
     return any(descendant.tag == "missing_evidence" and text_of(descendant) for descendant in element.iter())
 
 
+def validate_language_contract(root: ET.Element, issues: list[str], prefix: str = "") -> str:
+    language = (root.get("language") or "").strip()
+    if language not in SUPPORTED_LANGUAGES:
+        issues.append(f"{prefix}root language must be one of {', '.join(sorted(SUPPORTED_LANGUAGES))}; got {language or 'missing'}")
+
+    language_contract = child(root, "language_contract")
+    contract_language = text_of(child(language_contract, "output_language")) if language_contract is not None else ""
+    if not contract_language:
+        issues.append(f"{prefix}language_contract/output_language missing")
+    elif contract_language not in SUPPORTED_LANGUAGES:
+        issues.append(f"{prefix}language_contract/output_language must be one of {', '.join(sorted(SUPPORTED_LANGUAGES))}; got {contract_language}")
+    elif language and contract_language != language:
+        issues.append(f"{prefix}root language and language_contract/output_language mismatch: {language} != {contract_language}")
+
+    metadata = child(root, "metadata")
+    metadata_language = text_of(child(metadata, "output_language")) if metadata is not None else ""
+    if not metadata_language:
+        issues.append(f"{prefix}metadata/output_language missing")
+    elif metadata_language not in SUPPORTED_LANGUAGES:
+        issues.append(f"{prefix}metadata/output_language must be one of {', '.join(sorted(SUPPORTED_LANGUAGES))}; got {metadata_language}")
+    elif contract_language and metadata_language != contract_language:
+        issues.append(f"{prefix}metadata/output_language and language_contract/output_language mismatch: {metadata_language} != {contract_language}")
+
+    return language or contract_language or metadata_language or "unknown"
+
+
 def validate_report(root: ET.Element) -> dict[str, object]:
     issues: list[str] = []
     warnings: list[str] = []
@@ -173,6 +207,7 @@ def validate_report(root: ET.Element) -> dict[str, object]:
         issues.append("root missing person_id")
     if not root.get("generated_at"):
         issues.append("root missing generated_at")
+    output_language = validate_language_contract(root, issues)
 
     module_results: dict[str, dict[str, object]] = {}
     for module_name in REQUIRED_MODULES:
@@ -267,6 +302,7 @@ def validate_report(root: ET.Element) -> dict[str, object]:
         "passed": not issues,
         "schema": root.get("schema"),
         "person_id": root.get("person_id"),
+        "output_language": output_language,
         "maturity_level": maturity,
         "structure_completion": structure_completion,
         "modules": module_results,
@@ -284,7 +320,9 @@ def validate_evidence_maturity(root: ET.Element) -> dict[str, object]:
         issues.append("root schema must be psp.evidence-maturity.v1")
     if not root.get("person_id"):
         issues.append("root missing person_id")
+    output_language = validate_language_contract(root, issues, prefix="EVIDENCE_MATURITY.xml: ")
     required = (
+        "language_contract",
         "metadata",
         "maturity",
         "evidence_sources",
@@ -312,6 +350,7 @@ def validate_evidence_maturity(root: ET.Element) -> dict[str, object]:
     return {
         "passed": not issues,
         "schema": root.get("schema"),
+        "output_language": output_language,
         "maturity_level": level or "unknown",
         "issues": issues,
         "warnings": warnings,
@@ -379,6 +418,7 @@ def main() -> int:
         print(f"[PSP doctor] {status}: {report_path}")
         print(f"- schema: {result.get('schema')}")
         print(f"- person_id: {result.get('person_id')}")
+        print(f"- output_language: {result.get('output_language')}")
         print(f"- maturity_level: {result.get('maturity_level')}")
         print(f"- structure_completion: {result.get('structure_completion')}%")
         evidence_result = result.get("evidence_maturity_file")

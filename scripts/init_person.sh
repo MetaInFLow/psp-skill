@@ -6,6 +6,7 @@
 #   bash init_person.sh <person_id> --output-root <dir>
 #   bash init_person.sh <person_id> --lifeos-root <lifeos_repo>
 #   bash init_person.sh <person_id> --person-name "Display Name"
+#   bash init_person.sh <person_id> --language zh-CN
 #
 # 例：
 #   bash init_person.sh zhang_san
@@ -28,6 +29,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PSP_ROOT="$(dirname "$SCRIPT_DIR")"
 OUTPUT_ROOT="$PSP_ROOT/people"
 CREATE_RAW_MATERIALS="1"
+OUTPUT_LANGUAGE="zh-CN"
 
 while [ "$#" -gt 0 ]; do
     case "$1" in
@@ -56,6 +58,14 @@ while [ "$#" -gt 0 ]; do
             PERSON_NAME="$2"
             shift 2
             ;;
+        --language|--output-language)
+            if [ -z "$2" ]; then
+                echo "[错误] $1 需要语言参数：zh-CN 或 en-US"
+                exit 1
+            fi
+            OUTPUT_LANGUAGE="$2"
+            shift 2
+            ;;
         --no-raw-materials)
             CREATE_RAW_MATERIALS="0"
             shift
@@ -66,6 +76,21 @@ while [ "$#" -gt 0 ]; do
             ;;
     esac
 done
+
+case "$OUTPUT_LANGUAGE" in
+    zh-CN|en-US)
+        ;;
+    *)
+        echo "[错误] 不支持的 PSP 输出语言：$OUTPUT_LANGUAGE"
+        echo "支持值：zh-CN, en-US"
+        exit 1
+        ;;
+esac
+
+TEMPLATE_ROOT="$PSP_ROOT/templates"
+if [ -d "$PSP_ROOT/templates/$OUTPUT_LANGUAGE" ]; then
+    TEMPLATE_ROOT="$PSP_ROOT/templates/$OUTPUT_LANGUAGE"
+fi
 
 PERSON_DIR="$OUTPUT_ROOT/$PERSON_ID"
 TS="$(date +%Y%m%d-%H%M%S)"
@@ -108,29 +133,33 @@ render_template() {
     local person_name_escaped
     local generated_at_escaped
     local ts_escaped
+    local output_language_escaped
     person_id_escaped="$(escape_sed_replacement "$PERSON_ID")"
     person_name_escaped="$(escape_sed_replacement "$PERSON_NAME")"
     generated_at_escaped="$(escape_sed_replacement "$GENERATED_AT")"
     ts_escaped="$(escape_sed_replacement "$TS")"
+    output_language_escaped="$(escape_sed_replacement "$OUTPUT_LANGUAGE")"
     cp "$template" "$output"
     sed -i.bak \
         -e "s|{person_id}|$person_id_escaped|g" \
         -e "s|{person_name}|$person_name_escaped|g" \
         -e "s|{generated_at}|$generated_at_escaped|g" \
         -e "s|{artifact_timestamp}|$ts_escaped|g" \
+        -e "s|{output_language}|$output_language_escaped|g" \
         "$output"
     rm -f "$output.bak"
 }
 
 # 拷贝 XML 模板作为带时间戳的版本产物，并同步 current 入口。
-render_template "$PSP_ROOT/templates/PSP_REPORT.template.xml" "$PSP_VERSION"
+render_template "$TEMPLATE_ROOT/PSP_REPORT.template.xml" "$PSP_VERSION"
 cp "$PSP_VERSION" "$PSP_CURRENT"
-render_template "$PSP_ROOT/templates/EVIDENCE_MATURITY.template.xml" "$EVIDENCE_VERSION"
+render_template "$TEMPLATE_ROOT/EVIDENCE_MATURITY.template.xml" "$EVIDENCE_VERSION"
 cp "$EVIDENCE_VERSION" "$EVIDENCE_CURRENT"
 
 cat > "$PERSON_DIR/ARTIFACTS.xml" << EOF
 <?xml version="1.0" encoding="UTF-8"?>
-<psp_artifacts schema="psp.artifacts.v1" person_id="$PERSON_ID" generated_at="$GENERATED_AT">
+<psp_artifacts schema="psp.artifacts.v1" person_id="$PERSON_ID" generated_at="$GENERATED_AT" language="$OUTPUT_LANGUAGE">
+  <language_contract output_language="$OUTPUT_LANGUAGE">All PSP report prose, missing-information prompts, derived readables, runtime prompts, validation reports, and final disclosures must use this language unless preserving source quotes, file paths, XML tag names, or canonical protocol terms.</language_contract>
   <canonical_report current="current/PSP_REPORT.xml" version="versions/PSP_REPORT.$TS.xml"/>
   <evidence_maturity current="current/EVIDENCE_MATURITY.xml" version="versions/EVIDENCE_MATURITY.$TS.xml"/>
   <derived_artifacts root="derived/" source_of_truth="false"/>
@@ -138,11 +167,32 @@ cat > "$PERSON_DIR/ARTIFACTS.xml" << EOF
 </psp_artifacts>
 EOF
 
+if [ "$OUTPUT_LANGUAGE" = "zh-CN" ]; then
+cat > "$PERSON_DIR/ARTIFACTS.xml" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<psp_artifacts schema="psp.artifacts.v1" person_id="$PERSON_ID" generated_at="$GENERATED_AT" language="$OUTPUT_LANGUAGE">
+  <language_contract output_language="$OUTPUT_LANGUAGE">所有 PSP 报告正文、缺失信息提示、派生读物、runtime prompt、验证报告和最终披露都必须使用该语言；原始引用、文件路径、XML 标签名、schema 名、产品名和协议固定术语可以保留原文。</language_contract>
+  <canonical_report current="current/PSP_REPORT.xml" version="versions/PSP_REPORT.$TS.xml"/>
+  <evidence_maturity current="current/EVIDENCE_MATURITY.xml" version="versions/EVIDENCE_MATURITY.$TS.xml"/>
+  <derived_artifacts root="derived/" source_of_truth="false"/>
+  <soul_policy produced="false">SOUL.md 暂停；PSP_REPORT.xml 承载人物模型和 runtime 约束。</soul_policy>
+</psp_artifacts>
+EOF
+fi
+
 cat > "$PERSON_DIR/derived/README.md" << 'EOF'
 # Derived PSP Readables
 
 Optional Markdown or HTML renderings can live here, but `../current/PSP_REPORT.xml` remains the source of truth.
 EOF
+
+if [ "$OUTPUT_LANGUAGE" = "zh-CN" ]; then
+cat > "$PERSON_DIR/derived/README.md" << 'EOF'
+# PSP 派生可读版本
+
+这里可以放 Markdown 或 HTML 可读版本，但 `../current/PSP_REPORT.xml` 始终是唯一 source of truth。派生读物必须遵守 PSP XML 的 `language_contract`。
+EOF
+fi
 
 if [ "$CREATE_RAW_MATERIALS" = "1" ]; then
 cat > "$PERSON_DIR/raw_materials/meta.json" << EOF
