@@ -302,3 +302,5 @@ A PSP run is schema-complete when:
 - Language fingerprint includes sample size and confidence.
 - Runtime instructions explicitly separate `must_follow` from `must_not_do`.
 - Validation plan exists before any system prompt is treated as production-ready.
+
+`psp_doctor.py` also emits `content_maturity`. This score is computed from the required PSP XML module structure, including status, confidence, evidence, missing-evidence disclosure, required child fields, and content density. `structure_completion=100` only means the XML contract is present. Research/avatar-grade maturity requires stronger source inventory, language fingerprint evidence, validation plan execution, and holdout/blind evaluation results.

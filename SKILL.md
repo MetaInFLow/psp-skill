@@ -191,7 +191,7 @@ LifeOS 模式：`identity/psp/{person_id}/current/PSP_REPORT.xml` + `identity/ps
 
 ### 阶段一验收标准
 
-- `scripts/psp_doctor.py` 通过，所有必备 XML 模块存在
+- `scripts/psp_doctor.py` 通过，所有必备 XML 模块存在，并返回 `content_maturity`；结构通过不等于内容达到 research/avatar-grade
 - 16 子项全部填充或显式标注"不可萃取"
 - 5 个核心子项置信度 ≥ 中
 - 最佳态画像已构建
@@ -366,7 +366,7 @@ python scripts/consistency_scan.py \
 - `references/system_prompt_structure.md`——五段标准结构详解
 
 脚本：
-- `scripts/psp_doctor.py`——PSP XML 结构 doctor
+- `scripts/psp_doctor.py`——PSP XML 结构和内容成熟度 doctor
 - `scripts/extract_fingerprint.py`——12 维度语言指纹提取
 - `scripts/consistency_scan.py`——风格一致性自动扫描
 - `scripts/blind_eval_prep.py`——盲评测试包准备

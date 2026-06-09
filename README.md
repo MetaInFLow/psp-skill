@@ -41,7 +41,7 @@
 - `system_prompt_structure.md` —— 五段标准结构详解
 
 ### 脚本（scripts/）
-- `psp_doctor.py` —— PSP XML 结构 doctor
+- `psp_doctor.py` —— PSP XML 结构和内容成熟度 doctor；输出 `structure_completion` 与按 PSP 必备模块计算的 `content_maturity`
 - `extract_fingerprint.py` —— 12 维度语言指纹自动提取
 - `consistency_scan.py` —— 风格一致性自动扫描（阶段三测量 C）
 - `blind_eval_prep.py` —— 盲评测试包准备（阶段三测量 A）

@@ -12,6 +12,7 @@ from pathlib import Path
 
 MATURITY_LEVELS = {"scaffold", "evidence-limited-v0", "public-v0", "research-grade", "avatar-grade"}
 SUPPORTED_LANGUAGES = {"zh-CN", "en-US"}
+MATURITY_ORDER = ("scaffold", "evidence-limited-v0", "public-v0", "research-grade", "avatar-grade")
 
 REQUIRED_MODULES = (
     "language_contract",
@@ -115,6 +116,105 @@ ONTOLOGY_DIMENSIONS = (
     "expression_and_organization_view",
 )
 
+CONTENT_CORE_MODULES = {
+    "evidence_maturity",
+    "source_inventory",
+    "evidence_boundary",
+    "ontology_map",
+    "kernel",
+    "cognition",
+    "decision_model",
+    "interaction_model",
+    "business_domain_model",
+    "language_fingerprint",
+    "best_state",
+    "delegation_boundary",
+    "runtime_instructions",
+    "validation_plan",
+    "confirmation_checklist",
+    "acceptance_criteria",
+}
+
+CONTENT_MODULE_WEIGHTS = {
+    "language_contract": 2,
+    "metadata": 2,
+    "evidence_maturity": 6,
+    "source_inventory": 5,
+    "evidence_boundary": 5,
+    "ontology_map": 8,
+    "kernel": 9,
+    "cognition": 8,
+    "decision_model": 10,
+    "interaction_model": 7,
+    "business_domain_model": 6,
+    "language_fingerprint": 7,
+    "best_state": 6,
+    "delegation_boundary": 6,
+    "runtime_instructions": 7,
+    "validation_plan": 7,
+    "confirmation_checklist": 5,
+    "acceptance_criteria": 5,
+    "confidence_by_section": 4,
+    "missing_information": 4,
+    "iteration_log": 3,
+}
+
+STATUS_SCORE = {
+    "avatar-grade": 100,
+    "research-grade": 90,
+    "confirmed": 88,
+    "public-v0": 72,
+    "inferred": 68,
+    "medium-high": 64,
+    "medium_high": 64,
+    "configured": 62,
+    "append-only": 60,
+    "candidate-public-v0": 58,
+    "evidence-limited-v0": 45,
+    "hypothesis": 42,
+    "low": 30,
+    "not_extractable": 22,
+    "not-extractable": 22,
+    "not_started": 18,
+    "not-started": 18,
+    "unassessed": 12,
+    "empty": 8,
+    "scaffold": 6,
+}
+
+CONFIDENCE_SCORE = {
+    "high": 100,
+    "medium-high": 80,
+    "medium_high": 80,
+    "medium": 62,
+    "low-medium": 42,
+    "low_medium": 42,
+    "low": 28,
+    "insufficient": 6,
+}
+
+SCAFFOLD_MARKERS = (
+    "TODO",
+    "todo",
+    "scaffold",
+    "unassessed",
+    "not_started",
+    "not-started",
+    "empty",
+    "none",
+    "not-counted",
+    "unknown",
+    "尚未",
+    "待补",
+)
+
+CONTENT_EXCLUDE_TAGS = {
+    "question",
+    "runtime_use",
+    "missing_evidence",
+    "missing_information",
+}
+
 
 def resolve_report_path(path: Path) -> Path:
     if path.is_file():
@@ -167,6 +267,247 @@ def has_missing_marker(element: ET.Element) -> bool:
     if direct is not None and text_of(direct):
         return True
     return any(descendant.tag == "missing_evidence" and text_of(descendant) for descendant in element.iter())
+
+
+def clean_text(value: str) -> str:
+    return " ".join(value.split()).strip()
+
+
+def element_text(element: ET.Element, exclude_tags: set[str] | None = None) -> str:
+    exclude_tags = exclude_tags or set()
+    parts: list[str] = []
+    for descendant in element.iter():
+        if descendant.tag in exclude_tags:
+            continue
+        text = text_of(descendant)
+        if text:
+            parts.append(text)
+    return clean_text(" ".join(parts))
+
+
+def substantive_evidence_text(element: ET.Element) -> str:
+    parts: list[str] = []
+    if element.get("evidence"):
+        parts.append(element.get("evidence", ""))
+    for descendant in element.iter():
+        if descendant.tag == "evidence":
+            parts.append(text_of(descendant))
+    text = clean_text(" ".join(parts))
+    if not text or text.lower() in {"none", "n/a", "na", "unknown"}:
+        return ""
+    return text
+
+
+def confidence_value(raw: str | None) -> int:
+    if not raw:
+        return 0
+    return CONFIDENCE_SCORE.get(raw.strip().lower(), 34)
+
+
+def status_value(raw: str | None) -> int:
+    if not raw:
+        return 0
+    return STATUS_SCORE.get(raw.strip().lower(), 40)
+
+
+def missing_required_children(module_name: str, module: ET.Element) -> list[str]:
+    missing = [name for name in NESTED_REQUIREMENTS.get(module_name, ()) if child(module, name) is None]
+    if module_name == "ontology_map":
+        dimensions = child(module, "dimensions")
+        if dimensions is None:
+            missing.append("dimensions")
+        else:
+            missing.extend(
+                f"dimensions/{name}" for name in ONTOLOGY_DIMENSIONS if child(dimensions, name) is None
+            )
+    return missing
+
+
+def required_child_score(module_name: str, module: ET.Element) -> int:
+    required = list(NESTED_REQUIREMENTS.get(module_name, ()))
+    if module_name == "ontology_map":
+        dimensions = child(module, "dimensions")
+        if dimensions is None:
+            return 0
+        required.extend(f"dimensions/{name}" for name in ONTOLOGY_DIMENSIONS)
+        present = len(NESTED_REQUIREMENTS.get(module_name, ())) + sum(
+            1 for name in ONTOLOGY_DIMENSIONS if child(dimensions, name) is not None
+        )
+        return round(present / len(required) * 100) if required else 100
+    if not required:
+        return 100
+    present = sum(1 for name in required if child(module, name) is not None)
+    return round(present / len(required) * 100)
+
+
+def substance_score(module_name: str, module: ET.Element) -> int:
+    text = element_text(module, CONTENT_EXCLUDE_TAGS)
+    meaningful_children = [
+        descendant
+        for descendant in module.iter()
+        if descendant is not module
+        and descendant.tag not in CONTENT_EXCLUDE_TAGS
+        and (text_of(descendant) or list(descendant))
+    ]
+    score = min(100, len(text) // 8 + len(meaningful_children) * 4)
+    status = (module.get("status") or "").strip().lower()
+    if status in {"scaffold", "unassessed", "empty", "not_started", "not-started"}:
+        score = min(score, 35)
+    if module_name == "language_fingerprint" and child(module, "measurable_features") is None:
+        score = min(score, 65)
+    return score
+
+
+def module_content_score(module_name: str, module: ET.Element | None) -> dict[str, object]:
+    if module is None:
+        return {
+            "score": 0,
+            "status": "missing",
+            "confidence": "missing",
+            "has_evidence": False,
+            "has_missing_evidence": False,
+            "required_child_score": 0,
+            "substance_score": 0,
+            "missing_required_children": list(NESTED_REQUIREMENTS.get(module_name, ())),
+            "gaps": ["module missing"],
+        }
+
+    status = (module.get("status") or "").strip().lower()
+    confidence = (module.get("confidence") or "").strip().lower()
+    required_score = required_child_score(module_name, module)
+    evidence_text = substantive_evidence_text(module)
+    has_real_evidence = bool(evidence_text)
+    has_missing = has_missing_marker(module)
+    substance = substance_score(module_name, module)
+
+    score = round(
+        status_value(status) * 0.22
+        + confidence_value(confidence) * 0.20
+        + (100 if has_real_evidence else 35 if has_missing else 0) * 0.18
+        + (100 if has_missing else 55 if has_real_evidence else 0) * 0.10
+        + required_score * 0.12
+        + substance * 0.18
+    )
+    score = max(0, min(100, score))
+
+    gaps: list[str] = []
+    missing_children = missing_required_children(module_name, module)
+    if missing_children:
+        gaps.append("missing required children: " + ", ".join(missing_children))
+    if not status:
+        gaps.append("missing status")
+    elif status in {"scaffold", "unassessed", "empty", "not_started", "not-started"}:
+        gaps.append(f"status is {status}")
+    if not confidence:
+        gaps.append("missing confidence")
+    elif confidence in {"insufficient", "low", "low_medium", "low-medium"}:
+        gaps.append(f"confidence is {confidence}")
+    if module_name in CONTENT_CORE_MODULES and not has_real_evidence:
+        gaps.append("no substantive evidence")
+    if not has_missing and module_name in CONTENT_CORE_MODULES:
+        gaps.append("missing missing_evidence disclosure")
+    if substance < 45 and module_name in CONTENT_CORE_MODULES:
+        gaps.append("content too thin for this PSP module")
+
+    return {
+        "score": score,
+        "status": status or "missing",
+        "confidence": confidence or "missing",
+        "has_evidence": has_real_evidence,
+        "has_missing_evidence": has_missing,
+        "required_child_score": required_score,
+        "substance_score": substance,
+        "missing_required_children": missing_children,
+        "gaps": gaps,
+    }
+
+
+def level_from_score(score: int) -> str:
+    if score >= 85:
+        return "avatar-grade"
+    if score >= 70:
+        return "research-grade"
+    if score >= 45:
+        return "public-v0"
+    if score >= 20:
+        return "evidence-limited-v0"
+    return "scaffold"
+
+
+def cap_level(level: str, cap: str) -> str:
+    if level not in MATURITY_ORDER:
+        level = "scaffold"
+    if cap not in MATURITY_ORDER:
+        return level
+    return MATURITY_ORDER[min(MATURITY_ORDER.index(level), MATURITY_ORDER.index(cap))]
+
+
+def compute_content_maturity(root: ET.Element) -> dict[str, object]:
+    module_scores = {
+        name: module_content_score(name, child(root, name))
+        for name in REQUIRED_MODULES
+    }
+    total_weight = sum(CONTENT_MODULE_WEIGHTS.get(name, 1) for name in REQUIRED_MODULES)
+    weighted_score = round(
+        sum(int(module_scores[name]["score"]) * CONTENT_MODULE_WEIGHTS.get(name, 1) for name in REQUIRED_MODULES)
+        / total_weight
+    )
+    level = level_from_score(weighted_score)
+
+    evidence_module = child(root, "evidence_maturity")
+    declared_level = "unknown"
+    if evidence_module is not None:
+        declared_level = (text_of(child(evidence_module, "level")) or evidence_module.get("level") or "unknown").strip().lower()
+
+    blocking_gaps: list[str] = []
+    non_blocking_gaps: list[str] = []
+    for module_name, result in module_scores.items():
+        gaps = [str(gap) for gap in result["gaps"]]
+        if not gaps:
+            continue
+        if module_name in CONTENT_CORE_MODULES and int(result["score"]) < 45:
+            blocking_gaps.append(f"{module_name}: " + "; ".join(gaps[:3]))
+        else:
+            non_blocking_gaps.append(f"{module_name}: " + "; ".join(gaps[:2]))
+
+    validation_score = int(module_scores["validation_plan"]["score"])
+    fingerprint_score = int(module_scores["language_fingerprint"]["score"])
+    source_score = int(module_scores["source_inventory"]["score"])
+    if validation_score < 60:
+        level = cap_level(level, "public-v0")
+        blocking_gaps.append("validation_plan: blocks research/avatar-grade until holdout or blind validation is started")
+    if fingerprint_score < 60:
+        level = cap_level(level, "public-v0")
+        blocking_gaps.append("language_fingerprint: blocks avatar-grade style fidelity until measured corpus evidence exists")
+    if source_score < 55:
+        level = cap_level(level, "public-v0")
+        non_blocking_gaps.append("source_inventory: source provenance is not strong enough for research-grade")
+    if declared_level in {"scaffold", "evidence-limited-v0", "public-v0", "research-grade", "avatar-grade"}:
+        level = cap_level(level, declared_level)
+
+    weak_modules = [
+        {"module": name, "score": result["score"], "status": result["status"], "confidence": result["confidence"]}
+        for name, result in module_scores.items()
+        if int(result["score"]) < 55
+    ]
+    high_confidence_modules = [
+        {"module": name, "score": result["score"], "status": result["status"], "confidence": result["confidence"]}
+        for name, result in module_scores.items()
+        if int(result["score"]) >= 75 and str(result["confidence"]) in {"high", "medium-high", "medium_high"}
+    ]
+
+    return {
+        "level": level,
+        "score": weighted_score,
+        "score_out_of": 100,
+        "declared_evidence_maturity_level": declared_level,
+        "meaning": "PSP content maturity computed from the required PSP XML output structure; separate from schema completion.",
+        "module_scores": module_scores,
+        "weak_modules": weak_modules,
+        "high_confidence_modules": high_confidence_modules,
+        "blocking_gaps": blocking_gaps[:12],
+        "non_blocking_gaps": non_blocking_gaps[:12],
+    }
 
 
 def validate_language_contract(root: ET.Element, issues: list[str], prefix: str = "") -> str:
@@ -305,6 +646,7 @@ def validate_report(root: ET.Element) -> dict[str, object]:
         "output_language": output_language,
         "maturity_level": maturity,
         "structure_completion": structure_completion,
+        "content_maturity": compute_content_maturity(root),
         "modules": module_results,
         "issues": issues,
         "warnings": warnings,
@@ -421,6 +763,15 @@ def main() -> int:
         print(f"- output_language: {result.get('output_language')}")
         print(f"- maturity_level: {result.get('maturity_level')}")
         print(f"- structure_completion: {result.get('structure_completion')}%")
+        content_maturity = result.get("content_maturity")
+        if isinstance(content_maturity, dict):
+            print(
+                "- content_maturity: "
+                f"{content_maturity.get('level')} "
+                f"({content_maturity.get('score')}/{content_maturity.get('score_out_of')})"
+            )
+            for gap in content_maturity.get("blocking_gaps", [])[:5]:
+                print(f"- content_gap: {gap}")
         evidence_result = result.get("evidence_maturity_file")
         if isinstance(evidence_result, dict):
             print(f"- evidence_maturity_file: {evidence_result.get('path')}")
